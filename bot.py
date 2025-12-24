@@ -2,11 +2,19 @@ import os
 import requests
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import ReplyKeyboardRemove
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # --- Keyboards ---
+
+def main_menu_keyboard():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.row(KeyboardButton("HOROSCOPE"))
+    kb.row(KeyboardButton("HELP"))
+    kb.row(KeyboardButton("INFO"))
+    return kb
 
 def zodiac_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
@@ -25,7 +33,9 @@ def zodiac_keyboard():
             row = []
     if row:
         kb.row(*row)
+    kb.row(KeyboardButton("MENU"), KeyboardButton("CANCEL"))
     return kb
+
 
 def day_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
@@ -34,7 +44,7 @@ def day_keyboard():
         KeyboardButton("TOMORROW"),
         KeyboardButton("YESTERDAY"),
     )
-    kb.row(KeyboardButton("CANCEL"))
+    kb.row(KeyboardButton("MENU"), KeyboardButton("CANCEL"))
     return kb
 
 # --- API call ---
@@ -49,7 +59,12 @@ def get_daily_horoscope(sign: str, day: str) -> dict:
 
 @bot.message_handler(commands=["start", "hello"])
 def send_welcome(message):
-    bot.reply_to(message, "I am Baibacci and horoscope believer. Type /horoscope to begin.")
+    bot.send_message(
+        message.chat.id,
+        "I am Baibacci and horoscope believer. Choose an option:",
+        reply_markup=main_menu_keyboard()
+    )
+
 
 @bot.message_handler(commands=["horoscope"])
 def sign_handler(message):
@@ -64,7 +79,10 @@ def sign_handler(message):
 def day_handler(message):
     sign = (message.text or "").strip()
     if sign.upper() == "CANCEL":
-        bot.send_message(message.chat.id, "Cancelled. Type /horoscope to start again.")
+        bot.send_message(message.chat.id, "Cancelled. Choose an option:", reply_markup=main_menu_keyboard())
+        return
+    if sign.upper() == "MENU":
+        bot.send_message(message.chat.id, "Choose an option:", reply_markup=main_menu_keyboard())
         return
 
     valid_signs = {
@@ -89,10 +107,9 @@ def day_handler(message):
 
 def fetch_horoscope(message, sign):
     day = (message.text or "").strip().upper()
-    if day == "CANCEL":
-        bot.send_message(message.chat.id, "Cancelled. Type /horoscope to start again.")
+    if day in {"CANCEL", "MENU"}:
+        bot.send_message(message.chat.id, "Cancelled. Choose an option:", reply_markup=main_menu_keyboard())
         return
-
     allowed_days = {"TODAY", "TOMORROW", "YESTERDAY"}
     # Разрешаем также дату YYYY-MM-DD
     is_date = False
@@ -120,7 +137,7 @@ def fetch_horoscope(message, sign):
             f"*Day:* {date_text}"
         )
 
-        bot.send_message(message.chat.id, "Here's your horoscope!", reply_markup=telebot.types.ReplyKeyboardRemove())
+        bot.send_message(message.chat.id, "Here's your horoscope!", reply_markup=main_menu_keyboard())
         bot.send_message(message.chat.id, horoscope_message, parse_mode="Markdown")
     except Exception:
         bot.send_message(message.chat.id, "Something went wrong. Please try again later.")
@@ -137,7 +154,33 @@ def help_handler(message):
         "\n"
         "Tip: use the buttons to choose sign and day"
     )
-    bot.send_message(message.chat.id, text)
+    bot.send_message(message.chat.id, text, reply_markup=main_menu_keyboard())
+
+@bot.message_handler(commands=["info"])
+def info_handler(message):
+    text = (
+        "This Bot is made for educational purposes only and has no relation to any real person\n"
+    )
+    bot.send_message(message.chat.id, text, reply_markup=main_menu_keyboard())
+
+
+
+@bot.message_handler(func=lambda msg: msg.text in {"MENU", "HOROSCOPE", "HELP", "INFO"})
+def menu_router(message):
+    if message.text == "HELP":
+        help_handler(message)
+        return
+    if message.text == "INFO":
+        info_handler(message)
+        return
+
+    # HOROSCOPE или MENU ведут к сценарию гороскопа
+    bot.send_message(
+        message.chat.id,
+        "Choose your zodiac sign:",
+        reply_markup=zodiac_keyboard()
+    )
+    bot.register_next_step_handler(message, day_handler)
 
 # Optional: simple fallback for non-command text (doesn't echo commands)
 @bot.message_handler(func=lambda msg: msg.text and not msg.text.startswith("/"))
