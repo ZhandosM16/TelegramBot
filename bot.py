@@ -125,6 +125,20 @@ def fetch_horoscope(message, sign):
     except Exception:
         bot.send_message(message.chat.id, "Something went wrong. Please try again later.")
 
+
+@bot.message_handler(commands=["help"])
+def help_handler(message):
+    text = (
+        "Available commands:\n"
+        "/start - greeting\n"
+        "/horoscope - get daily horoscope\n"
+        "/help - show this help message\n"
+        "/info - info about the bot\n"
+        "\n"
+        "Tip: use the buttons to choose sign and day"
+    )
+    bot.send_message(message.chat.id, text)
+
 # Optional: simple fallback for non-command text (doesn't echo commands)
 @bot.message_handler(func=lambda msg: msg.text and not msg.text.startswith("/"))
 def fallback(message):
