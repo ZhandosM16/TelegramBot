@@ -3,6 +3,8 @@ import requests
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
+def log(message: str):
+    print(f"[LOG] {message}")
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -50,9 +52,12 @@ def day_keyboard():
 # --- API call ---
 
 def get_daily_horoscope(sign: str, day: str) -> dict:
+    log(f"API request: sign={sign}, day={day}")
     url = "https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily"
     params = {"sign": sign, "day": day}
     response = requests.get(url, params=params, timeout=15)
+    response.raise_for_status()
+    log(f"API response status={response.status_code}")
     return response.json()
 
 # --- Handlers ---
@@ -62,12 +67,14 @@ def go_to_menu(chat_id: int , text: str = "Choose an option:"):
 
 @bot.message_handler(commands=["start", "hello"])
 def send_welcome(message):
+    log(f"/start from user_id={message.from_user.id}, chat_id={message.chat.id}")
     go_to_menu(message.chat.id, "I am Baibacci and horoscope believer. Choose an option:")
 
 
 
 @bot.message_handler(commands=["horoscope"])
 def sign_handler(message):
+    log(f"/horoscope from user_id={message.from_user.id}")
     bot.send_message(
         message.chat.id,
         "Choose your zodiac sign:",
@@ -78,6 +85,7 @@ def sign_handler(message):
 
 def day_handler(message):
     sign = (message.text or "").strip()
+    log(f"day_handler: got sign_text='{sign}' from user_id={message.from_user.id}")
     if sign.upper() == "CANCEL":
         go_to_menu(message.chat.id, "Cancelled. Choose an option:")
         return
@@ -107,6 +115,7 @@ def day_handler(message):
 
 def fetch_horoscope(message, sign):
     day = (message.text or "").strip().upper()
+    log(f"fetch_horoscope: sing={sign}, got day_text='{day}' from user_id={message.from_user.id}")
     if day in {"CANCEL", "MENU"}:
         go_to_menu(message.chat.id, "Cancelled. Choose an option:")
         return
