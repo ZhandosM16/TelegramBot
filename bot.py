@@ -86,11 +86,25 @@ def sign_handler(message):
 def day_handler(message):
     sign = (message.text or "").strip()
     log(f"day_handler: got sign_text='{sign}' from user_id={message.from_user.id}")
-    if sign.upper() == "CANCEL":
+
+    upper = sign.upper()
+
+    if upper == "CANCEL":
         go_to_menu(message.chat.id, "Cancelled. Choose an option:")
         return
-    if sign.upper() == "MENU":
+    if upper == "MENU":
         go_to_menu(message.chat.id)
+        return
+    if upper == "HELP":
+        help_handler(message)
+        # после помощи возвращаем выбор знака
+        bot.send_message(message.chat.id, "Choose your zodiac sign:", reply_markup=zodiac_keyboard())
+        bot.register_next_step_handler(message, day_handler)
+        return
+    if upper == "INFO":
+        info_handler(message)
+        bot.send_message(message.chat.id, "Choose your zodiac sign:", reply_markup=zodiac_keyboard())
+        bot.register_next_step_handler(message, day_handler)
         return
 
     valid_signs = {
@@ -119,6 +133,17 @@ def fetch_horoscope(message, sign):
     if day in {"CANCEL", "MENU"}:
         go_to_menu(message.chat.id, "Cancelled. Choose an option:")
         return
+    if day == "HELP":
+        help_handler(message)
+        bot.send_message(message.chat.id, "Choose the day:", reply_markup=day_keyboard())
+        bot.register_next_step_handler(message, fetch_horoscope, sign)
+        return
+    if day == "INFO":
+        info_handler(message)
+        bot.send_message(message.chat.id, "Choose the day:", reply_markup=day_keyboard())
+        bot.register_next_step_handler(message, fetch_horoscope, sign)
+        return
+
     allowed_days = {"TODAY", "TOMORROW", "YESTERDAY"}
     # Разрешаем также дату YYYY-MM-DD
     is_date = False
