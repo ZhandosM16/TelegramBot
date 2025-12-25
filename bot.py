@@ -2,7 +2,7 @@ import os
 import requests
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-from telebot.types import ReplyKeyboardRemove
+
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -57,13 +57,13 @@ def get_daily_horoscope(sign: str, day: str) -> dict:
 
 # --- Handlers ---
 
+def go_to_menu(chat_id: int , text: str = "Choose an option:"):
+    bot.send_message(chat_id, text, reply_markup=main_menu_keyboard())
+
 @bot.message_handler(commands=["start", "hello"])
 def send_welcome(message):
-    bot.send_message(
-        message.chat.id,
-        "I am Baibacci and horoscope believer. Choose an option:",
-        reply_markup=main_menu_keyboard()
-    )
+    go_to_menu(message.chat.id, "I am Baibacci and horoscope believer. Choose an option:")
+
 
 
 @bot.message_handler(commands=["horoscope"])
@@ -79,10 +79,10 @@ def sign_handler(message):
 def day_handler(message):
     sign = (message.text or "").strip()
     if sign.upper() == "CANCEL":
-        bot.send_message(message.chat.id, "Cancelled. Choose an option:", reply_markup=main_menu_keyboard())
+        go_to_menu(message.chat.id, "Cancelled. Choose an option:")
         return
     if sign.upper() == "MENU":
-        bot.send_message(message.chat.id, "Choose an option:", reply_markup=main_menu_keyboard())
+        go_to_menu(message.chat.id)
         return
 
     valid_signs = {
@@ -108,7 +108,7 @@ def day_handler(message):
 def fetch_horoscope(message, sign):
     day = (message.text or "").strip().upper()
     if day in {"CANCEL", "MENU"}:
-        bot.send_message(message.chat.id, "Cancelled. Choose an option:", reply_markup=main_menu_keyboard())
+        go_to_menu(message.chat.id, "Cancelled. Choose an option:")
         return
     allowed_days = {"TODAY", "TOMORROW", "YESTERDAY"}
     # Разрешаем также дату YYYY-MM-DD
@@ -137,7 +137,7 @@ def fetch_horoscope(message, sign):
             f"*Day:* {date_text}"
         )
 
-        bot.send_message(message.chat.id, "Here's your horoscope!", reply_markup=main_menu_keyboard())
+        go_to_menu(message.chat.id, "Here's your horoscope!")
         bot.send_message(message.chat.id, horoscope_message, parse_mode="Markdown")
     except Exception:
         bot.send_message(message.chat.id, "Something went wrong. Please try again later.")
